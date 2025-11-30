@@ -1,1 +1,745 @@
 
+<!-- Chosen Palette: Legal Tech Serenity - Warm Stone/Beige background (#fafaf9) with Professional Navy (#1e3a8a) for primary actions, Slate (#334155) for text, and Emerald (#10b981) for success metrics. -->
+
+<!-- Application Structure Plan: 
+    The application is designed as a "Veralia Command Center" (Pusat Komando Veralia), a centralized dashboard to manage the 30-day launch strategy.
+    
+    Structure & Rationale:
+    1.  **Sidebar Navigation:** Persistent access to 5 key modules, ensuring the user can switch between strategy, execution, and analysis instantly.
+    2.  **Module 1: Ringkasan Strategi (Dashboard):** High-level view of Goals, Guardrails, and a "Funnel Benchmark" chart based on the Decision Rules. This sets the context immediately.
+    3.  **Module 2: Tangga Nilai (Value Ladder):** Visualizes the product hierarchy (Lead Magnet to Profit Max) using an interactive grid. Helps the user understand *what* to pitch when.
+    4.  **Module 3: Rencana Tempur (Weekly Plan):** A timeline-based interactive checklist. Breaking the 30 days into weekly tabs reduce cognitive load and focuses execution.
+    5.  **Module 4: Simulator Ekonomi (Unit Economics):** An interactive calculator with sliders to adjust Price, COGS, and CAC. It visualizes the "Margin Safety" via a Chart.js stacked bar, making the financial guardrails tangible.
+    6.  **Module 5: Kit Kreatif (Creative Kit):** A repository of Hooks and Scripts with "Copy to Clipboard" functionality. This removes friction during the outreach phase.
+
+    User Flow:
+    User starts at Dashboard to see goals -> Moves to Weekly Plan to check tasks -> Uses Creative Kit to execute outreach -> Checks Economics if pricing needs adjustment -> Refers to Value Ladder during demos.
+-->
+
+<!-- Visualization & Content Choices:
+    1.  **Benchmark Funnel (Chart.js Horizontal Bar):**
+        * *Goal:* Visualize the "Decision Rules" drop-off rates (Reply Rate < 15%, etc.).
+        * *Choice:* Horizontal Bar Chart acting as a funnel.
+        * *Justification:* Clearly shows the expected conversion attrition and highlights where to "pivot" if actual numbers drop below these bars.
+    2.  **Profitability Stack (Chart.js Stacked Bar):**
+        * *Goal:* Visualize Unit Economics (Price vs COGS vs Margin).
+        * *Choice:* Stacked Bar Chart.
+        * *Justification:* Visually demonstrates how much "profit room" exists within the Rp 150.000 price point and how COGS eats into it.
+    3.  **Interactive Checklist (HTML/JS):**
+        * *Goal:* Track weekly execution.
+        * *Choice:* Checkbox list with strikethrough effect.
+        * *Justification:* Provides immediate satisfaction and tracks progress.
+    4.  **Copy-Paste UI (HTML/JS):**
+        * *Goal:* Quick access to scripts.
+        * *Choice:* Text areas with a "Copy" button overlay.
+        * *Justification:* Maximizes usability for the primary task (outreach).
+    
+    *CONFIRMATION:* NO SVG graphics used. NO Mermaid JS used. All icons are Unicode. Charts are Canvas-based.
+-->
+
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Veralia: Pusat Komando Strategi 30 Hari</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom Font Setup */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fafaf9; /* Stone 50 */
+            color: #334155; /* Slate 700 */
+        }
+
+        /* Chart Container Strict Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        
+        /* Responsive height adjustments for charts */
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        /* Navigation Active State */
+        .nav-item.active {
+            background-color: #e2e8f0; /* Slate 200 */
+            border-left: 4px solid #1e3a8a; /* Blue 900 */
+            color: #1e3a8a;
+            font-weight: 600;
+        }
+
+        /* Transitions */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Custom Scrollbar for Script Areas */
+        .script-box::-webkit-scrollbar {
+            width: 6px;
+        }
+        .script-box::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .script-box::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row h-screen overflow-hidden">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-64 bg-white border-r border-stone-200 flex-shrink-0 flex flex-col z-20 shadow-sm">
+        <div class="p-6 border-b border-stone-100">
+            <h1 class="text-2xl font-bold text-slate-800 tracking-tight">VERALIA <span class="text-emerald-500">30</span></h1>
+            <p class="text-xs text-slate-500 mt-1">Pusat Komando Strategi</p>
+        </div>
+        
+        <nav class="flex-1 overflow-y-auto py-4">
+            <ul class="space-y-1">
+                <li>
+                    <button onclick="navigate('dashboard')" id="nav-dashboard" class="nav-item w-full text-left px-6 py-3 text-sm text-slate-600 hover:bg-stone-100 transition-colors flex items-center active">
+                        <span class="mr-3">📊</span> Ringkasan Strategi
+                    </button>
+                </li>
+                <li>
+                    <button onclick="navigate('ladder')" id="nav-ladder" class="nav-item w-full text-left px-6 py-3 text-sm text-slate-600 hover:bg-stone-100 transition-colors flex items-center">
+                        <span class="mr-3">🪜</span> Tangga Nilai (Offer)
+                    </button>
+                </li>
+                <li>
+                    <button onclick="navigate('weekly')" id="nav-weekly" class="nav-item w-full text-left px-6 py-3 text-sm text-slate-600 hover:bg-stone-100 transition-colors flex items-center">
+                        <span class="mr-3">🗓️</span> Rencana Tempur
+                    </button>
+                </li>
+                <li>
+                    <button onclick="navigate('economics')" id="nav-economics" class="nav-item w-full text-left px-6 py-3 text-sm text-slate-600 hover:bg-stone-100 transition-colors flex items-center">
+                        <span class="mr-3">💰</span> Simulator Ekonomi
+                    </button>
+                </li>
+                <li>
+                    <button onclick="navigate('creative')" id="nav-creative" class="nav-item w-full text-left px-6 py-3 text-sm text-slate-600 hover:bg-stone-100 transition-colors flex items-center">
+                        <span class="mr-3">✍️</span> Kit Kreatif (Copy)
+                    </button>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="p-6 bg-stone-50 border-t border-stone-200">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-semibold text-slate-500">Budget Usage</span>
+                <span class="text-xs font-bold text-slate-800">0%</span>
+            </div>
+            <div class="w-full bg-stone-200 rounded-full h-2">
+                <div class="bg-emerald-500 h-2 rounded-full" style="width: 0%"></div>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-2">Max: Rp 1.000.000</p>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto bg-stone-50/50 p-4 md:p-8 relative">
+        
+        <!-- MODULE 1: DASHBOARD (Ringkasan Strategi) -->
+        <section id="dashboard" class="view-section fade-in space-y-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-800">Ringkasan Eksekutif</h2>
+                <p class="text-slate-600 mt-2">
+                    Ikhtisar strategi 30 hari untuk mencapai 15 Notaris Champion. Gunakan dashboard ini untuk memantau metrik kunci dan aturan main.
+                </p>
+            </div>
+
+            <!-- Top Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
+                    <div class="text-xs font-bold text-blue-600 uppercase tracking-wide">Goal Utama</div>
+                    <div class="mt-2 text-3xl font-bold text-slate-800">15 Champion</div>
+                    <div class="text-sm text-slate-500 mt-1">Target: 30-50 Dokumen Berbayar</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
+                    <div class="text-xs font-bold text-emerald-600 uppercase tracking-wide">The Offer</div>
+                    <div class="mt-2 text-3xl font-bold text-slate-800">Rp 150k</div>
+                    <div class="text-sm text-slate-500 mt-1">Per Dokumen (Early Partner)</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
+                    <div class="text-xs font-bold text-rose-600 uppercase tracking-wide">Guardrail CAC</div>
+                    <div class="mt-2 text-3xl font-bold text-slate-800">&lt; Rp 300k</div>
+                    <div class="text-sm text-slate-500 mt-1">Biaya Akuisisi Maksimal</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
+                    <div class="text-xs font-bold text-indigo-600 uppercase tracking-wide">Channel Focus</div>
+                    <div class="mt-2 text-xl font-bold text-slate-800">70% Outreach</div>
+                    <div class="text-sm text-slate-500 mt-1">20% LinkedIn, 10% Community</div>
+                </div>
+            </div>
+
+            <!-- The Hook Banner -->
+            <div class="bg-indigo-900 text-white p-6 rounded-xl shadow-md">
+                <div class="text-xs font-bold text-indigo-300 uppercase mb-2">The Golden Hook</div>
+                <h3 class="text-xl md:text-2xl font-serif italic">"Berapa kali Anda menjelaskan pasal yang sama? Veralia melakukannya untuk Anda, tanpa mengurangi wibawa Anda."</h3>
+            </div>
+
+            <!-- Decision Rules Chart & Info -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Chart Area -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-stone-100">
+                    <h3 class="font-bold text-lg text-slate-800 mb-4">Decision Rules: Funnel Benchmark</h3>
+                    <p class="text-sm text-slate-500 mb-4">Grafik ini menunjukkan batas minimum konversi. Jika performa aktual di bawah garis ini, segera ubah strategi (pivot).</p>
+                    <div class="chart-container">
+                        <canvas id="funnelChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Rules Text -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-100 flex flex-col justify-center space-y-4">
+                    <div class="p-3 bg-stone-50 rounded-lg border-l-4 border-amber-500">
+                        <span class="block text-xs font-bold text-amber-600 uppercase">Pivot Rule #1</span>
+                        <p class="text-sm font-bold text-slate-800 mt-1">Reply Rate &lt; 15%</p>
+                        <p class="text-xs text-slate-600 mt-1">Action: Ganti Hook. Pesan terlalu kaku.</p>
+                    </div>
+                    <div class="p-3 bg-stone-50 rounded-lg border-l-4 border-amber-500">
+                        <span class="block text-xs font-bold text-amber-600 uppercase">Pivot Rule #2</span>
+                        <p class="text-sm font-bold text-slate-800 mt-1">Demo Booking &lt; 10%</p>
+                        <p class="text-xs text-slate-600 mt-1">Action: Masalah di Offer. Tambah Social Proof.</p>
+                    </div>
+                    <div class="p-3 bg-stone-50 rounded-lg border-l-4 border-amber-500">
+                        <span class="block text-xs font-bold text-amber-600 uppercase">Pivot Rule #3</span>
+                        <p class="text-sm font-bold text-slate-800 mt-1">Trial to Paid &lt; 30%</p>
+                        <p class="text-xs text-slate-600 mt-1">Action: Intensifkan Follow-up.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MODULE 2: VALUE LADDER -->
+        <section id="ladder" class="view-section hidden fade-in space-y-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-800">The Value Ladder</h2>
+                <p class="text-slate-600 mt-2">
+                    Struktur penawaran bertingkat. Jangan langsung jual Core Offer. Mulai dari yang termudah (Gratis) untuk membangun kepercayaan.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <!-- Step 1 -->
+                <div class="bg-white rounded-xl shadow-sm border-t-4 border-slate-400 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-4xl">🚪</span>
+                        <span class="text-xs font-bold px-2 py-1 bg-slate-100 rounded text-slate-600">PINTU MASUK</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800">Lead Magnet</h3>
+                    <p class="text-sm text-slate-500 mt-1 mb-4">Gratis / High Value</p>
+                    <ul class="space-y-2 text-sm text-slate-700">
+                        <li class="flex items-start"><span class="mr-2 text-slate-400">•</span> 1 Dokumen Gratis (Trial AI)</li>
+                        <li class="flex items-start"><span class="mr-2 text-slate-400">•</span> Mini Report: "7 Klausul Salah Paham"</li>
+                    </ul>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="bg-white rounded-xl shadow-sm border-t-4 border-blue-400 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-4xl">⚡</span>
+                        <span class="text-xs font-bold px-2 py-1 bg-blue-50 rounded text-blue-600">PENETRASI</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800">Tripwire</h3>
+                    <p class="text-sm text-slate-500 mt-1 mb-4">Low Risk / Rp 150k</p>
+                    <ul class="space-y-2 text-sm text-slate-700">
+                        <li class="flex items-start"><span class="mr-2 text-blue-400">•</span> <b>Single Document</b> (Rp 150k)</li>
+                        <li class="flex items-start"><span class="mr-2 text-blue-400">•</span> Paket Edukasi + Booklet (Rp 190k)</li>
+                    </ul>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="bg-white rounded-xl shadow-sm border-t-4 border-blue-700 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-4xl">🎯</span>
+                        <span class="text-xs font-bold px-2 py-1 bg-blue-100 rounded text-blue-800">CORE OFFER</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800">Paket Utama</h3>
+                    <p class="text-sm text-slate-500 mt-1 mb-4">Retention / Rp 1.25jt</p>
+                    <ul class="space-y-2 text-sm text-slate-700">
+                        <li class="flex items-start"><span class="mr-2 text-blue-600">•</span> <b>Paket 10 Dokumen</b></li>
+                        <li class="flex items-start"><span class="mr-2 text-blue-600">•</span> Hemat Rp 250.000</li>
+                        <li class="flex items-start"><span class="mr-2 text-blue-600">•</span> Workflow Rutin</li>
+                    </ul>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="bg-white rounded-xl shadow-sm border-t-4 border-emerald-500 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-4xl">🚀</span>
+                        <span class="text-xs font-bold px-2 py-1 bg-emerald-50 rounded text-emerald-600">MAXIMIZER</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800">Profit Max</h3>
+                    <p class="text-sm text-slate-500 mt-1 mb-4">Premium / High Margin</p>
+                    <ul class="space-y-2 text-sm text-slate-700">
+                        <li class="flex items-start"><span class="mr-2 text-emerald-400">•</span> <b>White-Label Solution</b></li>
+                        <li class="flex items-start"><span class="mr-2 text-emerald-400">•</span> "AI Paralegal by [Nama Notaris]"</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- MODULE 3: WEEKLY BATTLE PLAN -->
+        <section id="weekly" class="view-section hidden fade-in space-y-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-800">Rencana Tempur Mingguan</h2>
+                <p class="text-slate-600 mt-2">
+                    Checklist eksekusi per minggu. Fokus hanya pada minggu yang sedang berjalan untuk menjaga momentum.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
+                <!-- Tabs -->
+                <div class="flex border-b border-stone-100 overflow-x-auto">
+                    <button onclick="setWeek(1)" id="tab-week-1" class="week-tab px-6 py-4 text-sm font-semibold border-b-2 border-transparent hover:bg-stone-50 transition-colors text-blue-600 border-blue-600 bg-blue-50/50">Minggu 1: Foundation</button>
+                    <button onclick="setWeek(2)" id="tab-week-2" class="week-tab px-6 py-4 text-sm font-semibold border-b-2 border-transparent hover:bg-stone-50 transition-colors text-slate-500">Minggu 2: Outreach</button>
+                    <button onclick="setWeek(3)" id="tab-week-3" class="week-tab px-6 py-4 text-sm font-semibold border-b-2 border-transparent hover:bg-stone-50 transition-colors text-slate-500">Minggu 3: Community</button>
+                    <button onclick="setWeek(4)" id="tab-week-4" class="week-tab px-6 py-4 text-sm font-semibold border-b-2 border-transparent hover:bg-stone-50 transition-colors text-slate-500">Minggu 4: Conversion</button>
+                </div>
+
+                <!-- Content -->
+                <div class="p-6">
+                    <div id="week-description" class="mb-6 p-4 bg-stone-50 rounded-lg border border-stone-200">
+                        <h4 class="font-bold text-slate-800 mb-1" id="week-title">Minggu 1: Foundation & Setup</h4>
+                        <p class="text-sm text-slate-600" id="week-focus">Fokus: Bangun database dan aset.</p>
+                    </div>
+
+                    <div id="checklist-container" class="space-y-3">
+                        <!-- Checklist generated via JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MODULE 4: ECONOMICS SIMULATOR -->
+        <section id="economics" class="view-section hidden fade-in space-y-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-800">Simulator Unit Economics</h2>
+                <p class="text-slate-600 mt-2">
+                    Visualisasi margin keuntungan per dokumen. Gunakan slider untuk melihat dampak perubahan Harga atau COGS terhadap profitabilitas.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Controls -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-100 space-y-8">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Harga Jual (Price)</label>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-lg font-bold text-blue-600" id="disp-price">Rp 150.000</span>
+                        </div>
+                        <input type="range" id="input-price" min="100000" max="300000" step="10000" value="150000" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">COGS (Server/API)</label>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-lg font-bold text-rose-600" id="disp-cogs">Rp 20.000</span>
+                        </div>
+                        <input type="range" id="input-cogs" min="5000" max="50000" step="1000" value="20000" class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-rose-600">
+                    </div>
+
+                    <div class="pt-6 border-t border-stone-100">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Max CAC Target</label>
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-bold text-slate-800">Rp 300.000</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2">Budget per akuisisi. Jika margin di kanan terlalu tipis, CAC ini akan sulit tertutup (Payback Period lama).</p>
+                    </div>
+
+                    <!-- Result Box -->
+                    <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm text-emerald-800">Gross Profit:</span>
+                            <span class="font-bold text-emerald-700" id="res-profit">Rp 130.000</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-emerald-800">Margin:</span>
+                            <span class="font-bold text-emerald-700" id="res-margin">86%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-stone-100 flex flex-col justify-center items-center">
+                    <h3 class="font-bold text-lg text-slate-800 mb-4 w-full text-left">Visualisasi Struktur Harga</h3>
+                    <div class="chart-container">
+                        <canvas id="economicsChart"></canvas>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-4 text-center">Grafik ini menunjukkan porsi Biaya (COGS) vs Keuntungan (Profit) dalam satu kali penjualan dokumen.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- MODULE 5: CREATIVE KIT -->
+        <section id="creative" class="view-section hidden fade-in space-y-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-slate-800">Kit Kreatif & Skrip</h2>
+                <p class="text-slate-600 mt-2">
+                    Aset siap pakai untuk outreach. Salin dan sesuaikan sedikit sebelum dikirim.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Hooks Column -->
+                <div class="space-y-6">
+                    <h3 class="font-bold text-lg text-slate-700 border-b border-stone-200 pb-2">🎯 The Hooks</h3>
+                    
+                    <!-- Hook Item -->
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-stone-100 relative group">
+                        <div class="text-xs font-bold text-indigo-500 uppercase mb-2">Utama</div>
+                        <p class="text-slate-800 text-sm leading-relaxed pr-8" id="hook-main">"Berapa kali Anda menjelaskan pasal yang sama? Veralia melakukannya untuk Anda, tanpa mengurangi wibawa Anda."</p>
+                        <button onclick="copyToClipboard('hook-main')" class="absolute top-2 right-2 p-2 text-slate-300 hover:text-indigo-600 transition-colors" title="Copy">
+                            📋
+                        </button>
+                    </div>
+
+                    <!-- Hook Item -->
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-stone-100 relative group">
+                        <div class="text-xs font-bold text-emerald-500 uppercase mb-2">Efisiensi</div>
+                        <p class="text-slate-800 text-sm leading-relaxed pr-8" id="hook-eff">"Seperti punya paralegal 24/7 tanpa perlu bayar gaji bulanan, BPJS, atau THR."</p>
+                        <button onclick="copyToClipboard('hook-eff')" class="absolute top-2 right-2 p-2 text-slate-300 hover:text-emerald-600 transition-colors" title="Copy">
+                            📋
+                        </button>
+                    </div>
+
+                    <!-- Hook Item -->
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-stone-100 relative group">
+                        <div class="text-xs font-bold text-rose-500 uppercase mb-2">Emosional</div>
+                        <p class="text-slate-800 text-sm leading-relaxed pr-8" id="hook-emo">"63% klien merasa cemas ('ngeri') setelah tanda tangan akta. Hapus kecemasan itu dengan Veralia."</p>
+                        <button onclick="copyToClipboard('hook-emo')" class="absolute top-2 right-2 p-2 text-slate-300 hover:text-rose-600 transition-colors" title="Copy">
+                            📋
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Scripts Column -->
+                <div class="space-y-6">
+                    <h3 class="font-bold text-lg text-slate-700 border-b border-stone-200 pb-2">💬 Outreach Scripts</h3>
+
+                    <!-- Script Item -->
+                    <div class="bg-white rounded-lg shadow-sm border border-stone-100 overflow-hidden">
+                        <div class="bg-stone-50 px-4 py-2 border-b border-stone-100 flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-600">LinkedIn Connect (Soft)</span>
+                            <button onclick="copyToClipboard('script-li-connect')" class="text-xs text-blue-600 hover:underline">Copy</button>
+                        </div>
+                        <div class="p-4 bg-white relative">
+                            <textarea readonly id="script-li-connect" class="w-full h-24 text-sm text-slate-600 resize-none focus:outline-none script-box">Halo [Nama Notaris], saya lihat Anda aktif di [Area/Topik]. Saya sedang riset soal efisiensi penjelasan akta ke klien awam. Boleh connect untuk belajar dari perspektif Anda?</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Script Item -->
+                    <div class="bg-white rounded-lg shadow-sm border border-stone-100 overflow-hidden">
+                        <div class="bg-stone-50 px-4 py-2 border-b border-stone-100 flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-600">DM / WA Pitch (First Touch)</span>
+                            <button onclick="copyToClipboard('script-dm')" class="text-xs text-blue-600 hover:underline">Copy</button>
+                        </div>
+                        <div class="p-4 bg-white relative">
+                            <textarea readonly id="script-dm" class="w-full h-40 text-sm text-slate-600 resize-none focus:outline-none script-box">Pagi [Nama Notaris]. Saya perhatikan banyak notaris habis waktu 40-60 menit cuma buat jelasin pasal yang sama berulang-ulang.
+
+Kami di Veralia baru develop AI Paralegal yang bisa 'menerjemahkan' bahasa hukum ke bahasa awam buat klien, jadi mereka paham sebelum tanda tangan.
+
+Boleh saya kirim contoh hasil analisis 1 dokumen (gratis) buat Ibu/Bapak lihat? Cuma butuh 5 menit.</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Script Item -->
+                    <div class="bg-white rounded-lg shadow-sm border border-stone-100 overflow-hidden">
+                        <div class="bg-stone-50 px-4 py-2 border-b border-stone-100 flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-600">Follow Up (H+3)</span>
+                            <button onclick="copyToClipboard('script-fu')" class="text-xs text-blue-600 hover:underline">Copy</button>
+                        </div>
+                        <div class="p-4 bg-white relative">
+                            <textarea readonly id="script-fu" class="w-full h-32 text-sm text-slate-600 resize-none focus:outline-none script-box">Halo [Nama Notaris], sekadar bumping pesan di atas.
+
+Kalau sedang sibuk, saya bisa kirimkan PDF satu halaman studi kasus: 'Bagaimana Notaris X hemat 45 menit per klien pakai Veralia'. Mau saya kirimkan ini saja?</textarea>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JavaScript Implementation -->
+    <script>
+        // --- DATA STATE ---
+        const weeklyData = {
+            1: {
+                title: "Minggu 1: Foundation & Setup",
+                focus: "Bangun database dan aset.",
+                tasks: [
+                    "Database: Kumpulkan 50 kontak (30 Notaris Urban + 20 Lawyer SME)",
+                    "Social Proof: Siapkan IG (6 post grid: Intro, Cara Kerja, Privasi, Testimoni, Masalah, Solusi)",
+                    "LinkedIn: Post konten pilar 1: 'Kenapa klien takut tanda tangan?' (Data Adobe)",
+                    "Tech: Pastikan flow 'Upload -> Bayar -> Terima Hasil' lancar 100%"
+                ]
+            },
+            2: {
+                title: "Minggu 2: Outreach Sprint #1",
+                focus: "Validasi pesan dan dapatkan Demo.",
+                tasks: [
+                    "Action: Kirim 25 DM/WA ke list prioritas (5 per hari)",
+                    "Goal: Dapatkan 5 Demo/Call",
+                    "Demo Protocol: Tawarkan 1 dokumen gratis saat demo -> Minta feedback -> Tawarkan paket 3 dokumen",
+                    "LinkedIn: Post konten pilar 2: Carousel 'Bahasa Hukum vs Bahasa Manusia'"
+                ]
+            },
+            3: {
+                title: "Minggu 3: Community & Penetration",
+                focus: "Social Proof & Referensi.",
+                tasks: [
+                    "Community: Join 1 grup WA/FB Notaris atau Alumni Hukum. Jangan jualan langsung",
+                    "Value Drop: Share tips di grup: 'Cara hemat waktu menjelaskan pasal ke klien Gen-Z'",
+                    "Action: Kirim 25 DM/WA sisa (Batch 2)",
+                    "Content: Publish 'Mini Case Study': Notaris [Nama/Inisial] hemat waktu 45 menit"
+                ]
+            },
+            4: {
+                title: "Minggu 4: Conversion & Retention",
+                focus: "Mengubah Gratisan jadi Berbayar.",
+                tasks: [
+                    "Follow-up: Kontak semua orang yang sudah ambil dokumen gratis di Minggu 2 & 3",
+                    "Offer: 'Pak, trial kemarin gimana? Kebetulan kita ada paket bundle 10 dokumen diskon khusus minggu ini'",
+                    "Review: Cek CAC dan feedback. Mana skrip yang paling banyak dibalas?"
+                ]
+            }
+        };
+
+        // --- NAVIGATION LOGIC ---
+        function navigate(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('fade-in'));
+            
+            // Show target
+            const target = document.getElementById(sectionId);
+            target.classList.remove('hidden');
+            void target.offsetWidth; // Trigger reflow for animation
+            target.classList.add('fade-in');
+
+            // Update Nav Styles
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active');
+                el.classList.remove('text-blue-900');
+            });
+            document.getElementById(`nav-${sectionId}`).classList.add('active');
+
+            // Resize charts if becoming visible
+            if (sectionId === 'dashboard' && funnelChart) funnelChart.resize();
+            if (sectionId === 'economics' && economicsChart) economicsChart.resize();
+        }
+
+        // --- WEEKLY PLAN LOGIC ---
+        function setWeek(weekNum) {
+            // Update Tab Styles
+            document.querySelectorAll('.week-tab').forEach(el => {
+                el.classList.remove('border-blue-600', 'text-blue-600', 'bg-blue-50/50');
+                el.classList.add('border-transparent', 'text-slate-500');
+            });
+            const activeTab = document.getElementById(`tab-week-${weekNum}`);
+            activeTab.classList.remove('border-transparent', 'text-slate-500');
+            activeTab.classList.add('border-blue-600', 'text-blue-600', 'bg-blue-50/50');
+
+            // Update Content
+            const data = weeklyData[weekNum];
+            document.getElementById('week-title').innerText = data.title;
+            document.getElementById('week-focus').innerText = `Fokus: ${data.focus}`;
+
+            const listContainer = document.getElementById('checklist-container');
+            listContainer.innerHTML = '';
+            
+            data.tasks.forEach((task, index) => {
+                const id = `w${weekNum}-t${index}`;
+                const html = `
+                    <label for="${id}" class="flex items-start p-3 bg-white border border-stone-200 rounded-lg cursor-pointer hover:bg-stone-50 transition-colors group">
+                        <div class="flex items-center h-5">
+                            <input id="${id}" type="checkbox" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <span class="font-medium text-slate-700 group-hover:text-slate-900 select-none transition-all peer-checked:line-through peer-checked:text-slate-400">${task}</span>
+                        </div>
+                    </label>
+                `;
+                listContainer.insertAdjacentHTML('beforeend', html);
+            });
+
+            // Add listener for strikethrough effect
+            document.querySelectorAll(`#checklist-container input[type="checkbox"]`).forEach(chk => {
+                chk.addEventListener('change', function() {
+                    const span = this.closest('label').querySelector('span');
+                    if(this.checked) {
+                        span.classList.add('line-through', 'text-slate-400');
+                    } else {
+                        span.classList.remove('line-through', 'text-slate-400');
+                    }
+                });
+            });
+        }
+
+        // --- ECONOMICS SIMULATOR LOGIC ---
+        let economicsChart;
+
+        function initEconomicsChart() {
+            const ctx = document.getElementById('economicsChart').getContext('2d');
+            economicsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Unit Economics'],
+                    datasets: [
+                        {
+                            label: 'COGS (Biaya)',
+                            data: [20000],
+                            backgroundColor: '#fb7185', // Rose 400
+                            borderRadius: {bottomLeft: 4, bottomRight: 4}
+                        },
+                        {
+                            label: 'Gross Profit (Margin)',
+                            data: [130000],
+                            backgroundColor: '#34d399', // Emerald 400
+                            borderRadius: {topLeft: 4, topRight: 4}
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, grid: {display: false} },
+                        y: { 
+                            stacked: true, 
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) { return 'Rp ' + value/1000 + 'k'; }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': Rp ' + context.raw.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateEconomics() {
+            const price = parseInt(document.getElementById('input-price').value);
+            const cogs = parseInt(document.getElementById('input-cogs').value);
+
+            // Calculate
+            const profit = price - cogs;
+            const margin = Math.round((profit / price) * 100);
+
+            // Update UI Text
+            document.getElementById('disp-price').innerText = 'Rp ' + price.toLocaleString('id-ID');
+            document.getElementById('disp-cogs').innerText = 'Rp ' + cogs.toLocaleString('id-ID');
+            document.getElementById('res-profit').innerText = 'Rp ' + profit.toLocaleString('id-ID');
+            document.getElementById('res-margin').innerText = margin + '%';
+
+            // Update Chart
+            economicsChart.data.datasets[0].data = [cogs];
+            economicsChart.data.datasets[1].data = [profit];
+            economicsChart.update();
+        }
+
+        // --- FUNNEL CHART LOGIC ---
+        let funnelChart;
+        function initFunnelChart() {
+            const ctx = document.getElementById('funnelChart').getContext('2d');
+            funnelChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Outreach Sent', 'Reply Rate (>15%)', 'Demo Booking (>10%)', 'Trial to Paid (>30%)'],
+                    datasets: [{
+                        label: 'Target Benchmark',
+                        data: [100, 15, 10, 3], // Calculated relative to 100 initial
+                        backgroundColor: [
+                            '#e2e8f0', // Slate 200
+                            '#f59e0b', // Amber 500 (Warning Level)
+                            '#3b82f6', // Blue 500
+                            '#10b981'  // Emerald 500
+                        ],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { display: false },
+                        y: { grid: {display: false} }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Target: ' + context.raw + (context.dataIndex === 0 ? ' Kontak' : '% Konversi');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- COPY CLIPBOARD UTILITY ---
+        function copyToClipboard(elementId) {
+            let text = "";
+            const el = document.getElementById(elementId);
+            if(el.tagName === 'TEXTAREA') {
+                text = el.value;
+            } else {
+                text = el.innerText.replace(/"/g, ''); // Remove quotes for hooks if needed
+            }
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Teks berhasil disalin!");
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initFunnelChart();
+            initEconomicsChart();
+            setWeek(1); // Load Week 1 by default
+
+            // Listeners for Economics Simulator
+            document.getElementById('input-price').addEventListener('input', updateEconomics);
+            document.getElementById('input-cogs').addEventListener('input', updateEconomics);
+        });
+
+    </script>
+</body>
+</html>
